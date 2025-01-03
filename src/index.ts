@@ -37,11 +37,9 @@ const fetchPayment = async () => {
 
 app.use('*', async (c, next) => {
   try {
- console.log("Context:",c)
 const { DATABSE_URL } = env<{
   DATABSE_URL: string;
 }>(c);
-  console.log(DATABSE_URL)
   const sql = neon(DATABSE_URL);
   c.set('db', drizzle(sql)); 
   await next();
