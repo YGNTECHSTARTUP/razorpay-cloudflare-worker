@@ -3,7 +3,7 @@ import { fetchApiResponse, status } from './constant'
 import { env } from 'hono/adapter'
 import { drizzle, NeonHttpDatabase } from 'drizzle-orm/neon-http'
 import { neon, NeonQueryFunction } from '@neondatabase/serverless'
-import { paymentTable, paymentTable } from './db/schema'
+import { paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
 const app = new Hono()
 const fetchPayment = async () => {
@@ -59,32 +59,42 @@ app.get("/payment", async (c)=>{
       
             if ((res?.amount_paid ?? 0) > 0){
               const userexist = await db.select().from(paymentTable).where(eq(paymentTable.userid, Number(id))).then((res) => res.length > 0);
-              userexist ? {
-
-              } : {
-
+              if (userexist) {
+                const previousamt = await db.select({ amount: paymentTable.amount }).from(paymentTable).where(eq(paymentTable.userid, Number(id))).then((res) => res[0]?.amount ?? 0);
+                const newamt = previousamt + Number(res?.amount_paid);
+                await db.update(paymentTable).set({ amount: newamt }).where(eq(paymentTable.userid, Number(id))).then((res) => res);
+              } else {
+                const userPayment:typeof paymentTable.$inferInsert = {
+                  userid: Number(id),
+                  amount: Number(res?.amount_paid)
+                }
+                await db.insert(paymentTable).values(userPayment).then((res) => res);
               }
-              const previousamt = await db.select({ amount: paymentTable.amount }).from(paymentTable).where(eq(paymentTable.userid, Number(id))).then((res) => res[0]?.amount ?? 0);
-              const newamt = previousamt + Number(res?.amount_paid);
-              const userPayment:typeof paymentTable.$inferInsert = {
-                userid: Number(id),
-                amount: Number(res?.amount_paid)
-              }
-              await db.insert(paymentTable).values(userPayment).then((res) => res);
             }
         
       }
       catch(err){
-             console.log(err)
+            return c.json({
+              error: "An error occurred while updating the database",
+              status: "error",
+              code:"502"
+             })
       }
      
     }
   }
   catch(err){
-    console.log(err)
+   return c.json({
+    error: "An error occurred while fetching payment",
+    status: "error",
+    code:"502"
+   })
   }
     
-    return c.text(`Payment ID: ${id}`)
+    return c.json({
+      status: "success",
+      message: "Payment updated successfully",
+    })
   }
   
 
