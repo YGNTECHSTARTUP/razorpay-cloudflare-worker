@@ -48,7 +48,7 @@ export type ErrorResponse = {
         id: "order_EKwxwAgItmmXdp",
         entity: "order",
         amount: 50000,
-        amount_paid: 0,
+        amount_paid: 1000,
         amount_due: 50000,
         currency: "INR",
         receipt: "receipt#1",

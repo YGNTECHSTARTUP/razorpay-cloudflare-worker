@@ -1,8 +1,8 @@
 import { Hono } from 'hono'
-import { fetchApiResponse, status } from './constant'
+import { fetchApiResponse} from './constant'
 import { env } from 'hono/adapter'
-import { drizzle, NeonHttpDatabase } from 'drizzle-orm/neon-http'
-import { neon, NeonQueryFunction } from '@neondatabase/serverless'
+import { drizzle} from 'drizzle-orm/neon-http'
+import { neon } from '@neondatabase/serverless'
 import { paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
 const app = new Hono()
@@ -32,8 +32,28 @@ const fetchPayment = async () => {
 
 
 app.get('/', (c) => {
-  return c.text('Hello Hono!')
+  return c.text('Hello! There are 2 Routes /payment?userid and /user:id')
 })
+
+app.get("/user/:id", async (c)=> {
+ 
+const id = c.req.param("id");
+if (id === undefined) {
+  return c.json({
+    error: "User ID is required",
+    status: "error",
+  })}
+  const {DATABSE_URL} = env<{DATABSE_URL:string}>(c);
+  const sql = neon(DATABSE_URL);
+const db = drizzle(sql);
+  const amt = await db.select({amount:paymentTable.amount}).from(paymentTable).where(eq(paymentTable.userid,Number(id))).then((res)=>res[0]?.amount ?? 0);
+  return c.json({
+    userid:id,
+    amount:amt
+  })
+});
+
+
 
 app.get("/payment", async (c)=>{
   const id = c.req.query("userid");
@@ -70,6 +90,12 @@ app.get("/payment", async (c)=>{
                 }
                 await db.insert(paymentTable).values(userPayment).then((res) => res);
               }
+            }
+            else {
+              return c.json({
+                error: "No payment to update",
+                status: "error",
+              });
             }
         
       }
