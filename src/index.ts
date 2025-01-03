@@ -1,10 +1,17 @@
 import { Hono } from 'hono'
 import { fetchApiResponse} from './constant'
 import { env } from 'hono/adapter'
-import { drizzle} from 'drizzle-orm/neon-http'
-import { neon } from '@neondatabase/serverless'
+import { drizzle, NeonHttpDatabase} from 'drizzle-orm/neon-http'
+import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 import { paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
+declare module "hono"{
+  interface ContextVariableMap{
+    db:NeonHttpDatabase<Record<string, never>> & {
+      $client: NeonQueryFunction<false, false>;
+  }
+  }
+}
 const app = new Hono()
 const fetchPayment = async () => {
   try {
@@ -28,6 +35,22 @@ const fetchPayment = async () => {
   }
 }
 
+app.use('*', async (c, next) => {
+  try {
+ console.log("Context:",c)
+const { DATABSE_URL } = env<{
+  DATABSE_URL: string;
+}>(c);
+  console.log(DATABSE_URL)
+  const sql = neon(DATABSE_URL);
+  c.set('db', drizzle(sql)); 
+  await next();
+  }catch(err){
+    console.error("An error occurred while connecting to the database:", err);
+  }
+ 
+});
+
 
 
 
@@ -43,15 +66,19 @@ if (id === undefined) {
     error: "User ID is required",
     status: "error",
   })}
-  const {DATABSE_URL} = env<{DATABSE_URL:string}>(c);
-  const sql = neon(DATABSE_URL);
-const db = drizzle(sql);
+  const db = c.get('db');
   const amt = await db.select({amount:paymentTable.amount}).from(paymentTable).where(eq(paymentTable.userid,Number(id))).then((res)=>res[0]?.amount ?? 0);
   return c.json({
     userid:id,
     amount:amt
   })
 });
+
+app.get("/show", async (c)=> {
+  const db = c.get('db');
+  const res = await db.select().from(paymentTable).then((res)=>res);
+  return c.json(res)
+})
 
 
 
@@ -64,9 +91,7 @@ app.get("/payment", async (c)=>{
     })
   }
   else {
-    const {DATABSE_URL} = env<{DATABSE_URL:string}>(c);
-    const sql = neon(DATABSE_URL);
-  const db = drizzle(sql);
+    const db = c.get('db');
   try {
     const res = await fetchPayment().then((rese)=>rese);
     if (res?.status === "error") {
