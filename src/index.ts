@@ -50,6 +50,18 @@ const { DATABSE_URL } = env<{
  
 });
 
+app.get("/campaign/:id",async (c)=>{
+  const db = c.get("db")
+  const campaignId = Number(c.req.param("id"));
+  const campaignInfo = {
+    campaignDetails : await db.select().from(campaigns).where(eq(campaigns.id,campaignId)),
+totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).where(eq(campaigns.id,campaignId)),
+  raisedfund :await db.select({sum:sum(paymentTable.amount)}).from(paymentTable).where(eq(campaigns.id,campaignId)),
+  }
+  return c.json({
+    campaignInfo
+  })
+})
 
 
 app.get("/showcampaigns", async (c) => {
