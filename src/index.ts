@@ -125,7 +125,7 @@ app.put('/update-campaign/:id', async (c) => {
       // img: body['file'] -- cloudflare r2 or alternative
     };
 
-    if (!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || !campaignData.imgurl) {
+    if (!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || campaignData.imgurl) {
       return c.json({
         error: "All fields are required",
         status: 400,
@@ -166,7 +166,7 @@ app.put('/update-campaign/:id', async (c) => {
 
 app.post('/create-campaign', async (c) => {
   const db = c.get('db');
-  const body = await c.req.parseBody();
+  const body = await c.req.json();
   try{
     const campaignData = {
       campaignName: String(body.campaignname),
@@ -176,7 +176,15 @@ app.post('/create-campaign', async (c) => {
       imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
       // img:body['file'] -- cloudflare r2 is not ready yet or need to find any alternative
     };
-    if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || !campaignData.imgurl){
+    const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.campaignName, campaignData.campaignName)).limit(1);
+
+    if (existingCampaign.length > 0) {
+      return c.json({
+        error: "Campaign already exists",
+        status: 400
+      });
+    }
+    if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days ){
       return c.json({
         error:"All fields are required",
         status:400
@@ -186,19 +194,18 @@ app.post('/create-campaign', async (c) => {
       const result = await db.insert(campaigns).values(campaignData);
       return c.json({
         message: "Campaign created successfully",
-        data: result,
         status: 201,
       });
     }
     catch{
-      c.json({
+      return c.json({
         message:"Failed to Update in the Database",
         status:502
       })
     }
   }
   catch(e){
-    c.json({
+    return c.json({
       message:"Failed to parse the statement",
       status:400
     })
