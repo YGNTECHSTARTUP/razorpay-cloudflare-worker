@@ -3,8 +3,9 @@ import { fetchApiResponse} from './constant'
 import { env } from 'hono/adapter'
 import { drizzle, NeonHttpDatabase} from 'drizzle-orm/neon-http'
 import { neon, NeonQueryFunction } from '@neondatabase/serverless'
-import { paymentTable} from './db/schema'
+import {  campaigns, paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
+import { count, sum } from 'drizzle-orm'
 declare module "hono"{
   interface ContextVariableMap{
     db:NeonHttpDatabase<Record<string, never>> & {
@@ -49,6 +50,138 @@ const { DATABSE_URL } = env<{
  
 });
 
+
+
+app.get("/showcampaigns", async (c) => {
+  const db = c.get("db");
+  
+  const campaignsData = await db.select().from(campaigns);
+
+  const campaignDetails = await Promise.all(
+    campaignsData.map(async (campaign) => {
+      const totalfunders = await db
+        .select({
+          count: count(paymentTable.id)
+        })
+        .from(paymentTable)
+        .where(eq(paymentTable.campaignsid, campaign.id)); 
+      
+      const funders = totalfunders[0].count;
+
+      const raised = await db
+        .select({ sum: sum(paymentTable.amount) })
+        .from(paymentTable)
+        .where(eq(paymentTable.campaignsid, campaign.id)); 
+      
+      const raisedtotal = raised[0].sum;
+
+      return {
+        campaignId: campaign.id,
+        campaignName: campaign.campaignName,
+        totalFunderCount: funders,
+        totalRaisedAmount: raisedtotal
+      };
+    })
+  );
+
+  c.json(campaignDetails);
+});
+
+app.put('/update-campaign/:id', async (c) => {
+  const db = c.get('db');
+  const body = await c.req.parseBody();
+  const campaignId = Number(c.req.param('id')); 
+
+  try {
+    const campaignData = {
+      campaignName: String(body.campaignname),
+      description: String(body.description),
+      targetAmount: Number(body.targetamount),
+      days: Number(body.days),
+      imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
+      // img: body['file'] -- cloudflare r2 or alternative
+    };
+
+    if (!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || !campaignData.imgurl) {
+      return c.json({
+        error: "All fields are required",
+        status: 400,
+      });
+    }
+
+    const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.id,campaignId)).limit(1);
+
+    if (existingCampaign.length === 0) {
+      return c.json({
+        error: "Campaign not found",
+        status: 404,
+      });
+    }
+
+    try {
+      const result = await db.update(campaigns).set(campaignData).where(eq(campaigns.id, campaignId));
+
+      return c.json({
+        message: "Campaign updated successfully",
+        data: result,
+        status: 200,
+      });
+    } catch (updateError) {
+      return c.json({
+        message: "Failed to update the campaign in the database",
+        status: 502,
+      });
+    }
+  } catch (e) {
+    return c.json({
+      message: "Failed to parse the request body",
+      status: 400,
+    });
+  }
+});
+
+
+app.post('/create-campaign', async (c) => {
+  const db = c.get('db');
+  const body = await c.req.parseBody();
+  try{
+    const campaignData = {
+      campaignName: String(body.campaignname),
+      description: String(body.description),
+      targetAmount: Number(body.targetamount),
+      days: Number(body.days),
+      imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
+      // img:body['file'] -- cloudflare r2 is not ready yet or need to find any alternative
+    };
+    if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || !campaignData.imgurl){
+      return c.json({
+        error:"All fields are required",
+        status:400
+      })
+    }
+    try{
+      const result = await db.insert(campaigns).values(campaignData);
+      return c.json({
+        message: "Campaign created successfully",
+        data: result,
+        status: 201,
+      });
+    }
+    catch{
+      c.json({
+        message:"Failed to Update in the Database",
+        status:502
+      })
+    }
+  }
+  catch(e){
+    c.json({
+      message:"Failed to parse the statement",
+      status:400
+    })
+  }
+ 
+});
 
 
 
