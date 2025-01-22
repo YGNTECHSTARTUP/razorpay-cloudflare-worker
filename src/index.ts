@@ -65,39 +65,50 @@ totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).wher
 
 
 app.get("/showcampaigns", async (c) => {
-  const db = c.get("db");
+  try{
+    const db = c.get("db");
   
-  const campaignsData = await db.select().from(campaigns);
+    const campaignsData = await db.select().from(campaigns);
+  
+  
+    const campaignDetails = await Promise.all(
+      campaignsData.map(async (campaign) => {
+        const totalfunders = await db
+          .select({
+            count: count(paymentTable.id)
+          })
+          .from(paymentTable)
+          .where(eq(paymentTable.campaignsid, campaign.id)); 
+        
+        const funders = totalfunders[0].count;
+  
+        const raised = await db
+          .select({ sum: sum(paymentTable.amount) })
+          .from(paymentTable)
+          .where(eq(paymentTable.campaignsid, campaign.id)); 
+        
+        const raisedtotal = raised[0].sum;
+  
+        return {
+          campaignId: campaign.id,
+          campaignName: campaign.campaignName,
+          totalFunderCount: funders,
+          totalRaisedAmount: raisedtotal
+        };
+      })
+    );
+  
+    return c.json(campaignDetails);
+  }
+catch(e){
+  return c.json({
+    message:"Failed to fetch the details",
+    status:404
+  })
+}
+}
 
-  const campaignDetails = await Promise.all(
-    campaignsData.map(async (campaign) => {
-      const totalfunders = await db
-        .select({
-          count: count(paymentTable.id)
-        })
-        .from(paymentTable)
-        .where(eq(paymentTable.campaignsid, campaign.id)); 
-      
-      const funders = totalfunders[0].count;
-
-      const raised = await db
-        .select({ sum: sum(paymentTable.amount) })
-        .from(paymentTable)
-        .where(eq(paymentTable.campaignsid, campaign.id)); 
-      
-      const raisedtotal = raised[0].sum;
-
-      return {
-        campaignId: campaign.id,
-        campaignName: campaign.campaignName,
-        totalFunderCount: funders,
-        totalRaisedAmount: raisedtotal
-      };
-    })
-  );
-
-  c.json(campaignDetails);
-});
+);
 
 app.put('/update-campaign/:id', async (c) => {
   const db = c.get('db');
