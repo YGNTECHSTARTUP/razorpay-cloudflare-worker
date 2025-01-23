@@ -110,6 +110,40 @@ catch(e){
 
 );
 
+app.delete('/delete-campaign/:id', async (c) => {
+  const db = c.get('db');
+  const campaignId = Number(c.req.param('id')); 
+  try {
+    const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
+
+    if (existingCampaign.length === 0) {
+      return c.json({
+        error: "Unable to delete. Campaign does not exist.",
+        status: 404,
+      });
+    }
+
+    try {
+      await db.delete(campaigns).where(eq(campaigns.id, campaignId));
+      return c.json({
+        message: "Campaign deleted successfully",
+        status: 200,
+      });
+    } catch (deleteError) {
+      return c.json({
+        message: "Failed to delete the campaign from the database",
+        status: 502,
+      });
+    }
+  } catch (e) {
+    return c.json({
+      message: "Failed to process the request",
+      status: 400,
+    });
+  }
+});
+
+
 app.put('/update-campaign/:id', async (c) => {
   const db = c.get('db');
   const body = await c.req.parseBody();
