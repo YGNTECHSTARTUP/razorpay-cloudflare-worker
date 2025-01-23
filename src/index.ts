@@ -51,24 +51,32 @@ const { DATABSE_URL } = env<{
 });
 
 app.get("/campaign/:id",async (c)=>{
-  const db = c.get("db")
-  const campaignId = Number(c.req.param("id"));
-  const campaignInfo = {
-    campaignDetails : await db.select().from(campaigns).where(eq(campaigns.id,campaignId)),
-totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).where(eq(campaigns.id,campaignId)),
-  raisedfund :await db.select({sum:sum(paymentTable.amount)}).from(paymentTable).where(eq(campaigns.id,campaignId)),
+  try{
+    const db = c.get("db")
+    const campaignId = Number(c.req.param("id"));
+    const campaignInfo = {
+      campaignDetails : await db.select().from(campaigns).where(eq(campaigns.id,campaignId)),
+  totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).where(eq(campaigns.id,campaignId)),
+    raisedfund :await db.select({sum:sum(paymentTable.amount)}).from(paymentTable).where(eq(campaigns.id,campaignId)),
+    }
+    return c.json({
+      campaignInfo
+    })
   }
-  return c.json({
-    campaignInfo
-  })
+  catch(e){
+    return c.json({
+      error:"Campaign Not found",
+      status:404
+    })
+  }
+  
 })
 
 app.post('/create-payment', async (c) => {
-  const db = c.get('db'); // Access the database connection
-  const body = await c.req.parseBody(); // Parse the request body
+  const db = c.get('db');
+  const body = await c.req.parseBody(); 
 
   try {
-    // Extract and validate the required fields
     const userid = Number(body.userid);
     const amount = Number(body.amount);
     const username = String(body.username || null); // Optional field
@@ -84,7 +92,6 @@ app.post('/create-payment', async (c) => {
       );
     }
 
-    // Validate foreign key constraint for `campaignsid`, if provided
     if (campaignsid) {
       const campaignExists = await db
         .select()
@@ -282,6 +289,13 @@ app.post('/create-campaign', async (c) => {
       imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
       // img:body['file'] -- cloudflare r2 is not ready yet or need to find any alternative
     };
+    if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount ||!campaignData.days){
+      return c.json({
+        error:"All fields are required",
+        status:400
+      })
+    }
+
     const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.campaignName, campaignData.campaignName)).limit(1);
 
     if (existingCampaign.length > 0) {
@@ -290,12 +304,7 @@ app.post('/create-campaign', async (c) => {
         status: 400
       });
     }
-    if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days ){
-      return c.json({
-        error:"All fields are required",
-        status:400
-      })
-    }
+  
     try{
       const result = await db.insert(campaigns).values(campaignData);
       return c.json({
@@ -322,7 +331,7 @@ app.post('/create-campaign', async (c) => {
 
 
 app.get('/', (c) => {
-  return c.text('Hello! There are 2 Routes /payment?userid and /user:id')
+  return c.text('Hello! Enter the Valid Api Endpoint')
 })
 
 app.get("/user/:id", async (c)=> {
