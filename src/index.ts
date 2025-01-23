@@ -50,56 +50,93 @@ const { DATABSE_URL } = env<{
  
 });
 
-app.get("/campaign/:id",async (c)=>{
-  try{
-    const db = c.get("db")
-    const campaignId = Number(c.req.param("id"));
-    const campaignInfo = {
-      campaignDetails : await db.select().from(campaigns).where(eq(campaigns.id,campaignId)),
-  totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).where(eq(campaigns.id,campaignId)),
-    raisedfund :await db.select({sum:sum(paymentTable.amount)}).from(paymentTable).where(eq(campaigns.id,campaignId)),
+app.get("/campaign/:id", async (c) => {
+  const db = c.get("db");
+  const campaignId = Number(c.req.param("id"));
+
+  // Validate campaignId
+  if (isNaN(campaignId)) {
+    return c.json({
+      error: "Invalid campaign ID",
+      status: 400,
+    });
+  }
+
+  try {
+    const campaignDetails = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId));
+
+    if (campaignDetails.length === 0) {
+      return c.json({
+        error: "Campaign not found",
+        status: 404,
+      });
     }
+
+    const totalFundersResult = await db
+      .select({ count: count(campaigns.id) })
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId));
+
+    const totalFunders = totalFundersResult[0]?.count || 0;
+
+    const raisedFundResult = await db
+      .select({ sum: sum(paymentTable.amount) })
+      .from(paymentTable)
+      .where(eq(paymentTable.campaignsid, campaignId));
+
+    const raisedFund = raisedFundResult[0]?.sum || 0;
+
     return c.json({
-      campaignInfo
-    })
-  }
-  catch(e){
+      campaignDetails: campaignDetails[0], 
+      totalFunders,
+      raisedFund,
+    });
+  } catch (error) {
+    console.error("Error:", error);
     return c.json({
-      error:"Campaign Not found",
-      status:404
-    })
+      error: "An error occurred while fetching campaign data",
+      status: 500,
+    });
   }
-  
-})
+});
+
 
 app.post('/create-payment', async (c) => {
   const db = c.get('db');
-  const body = await c.req.parseBody(); 
+  const body = await c.req.json();
 
   try {
     const userid = Number(body.userid);
     const amount = Number(body.amount);
-    const username = String(body.username || null); // Optional field
-    const campaignsid = body.campaignsid ? Number(body.campaignsid) : null; // Optional foreign key
+    const username = body.username ? String(body.username) : null; // Optional field
+    const campaignsid = Number(body.campaignsid);
 
-    if (!userid || !amount) {
+    console.log("Received values:", { userid, amount, username, campaignsid });
+
+    // Validate userid and amount are numbers
+    if (isNaN(userid) || isNaN(amount)) {
       return c.json(
         {
-          error: "Missing required fields: 'userid' or 'amount'.",
+          error: "Invalid values for 'userid' or 'amount'.",
           status: 400,
         },
         400
       );
     }
 
+    // Validate campaignsid if provided
     if (campaignsid) {
       const campaignExists = await db
         .select()
         .from(campaigns)
         .where(eq(campaigns.id, campaignsid))
-        .limit(1);
+        .limit(1).execute();
+        console.log(campaignExists)
 
-      if (campaignExists.length === 0) {
+      if (!Array.isArray(campaignExists) || campaignExists.length === 0) {
         return c.json(
           {
             error: "Invalid 'campaignsid'. Campaign does not exist.",
@@ -117,7 +154,7 @@ app.post('/create-payment', async (c) => {
         amount,
         username,
         campaignsid,
-      }) 
+      });
 
     return c.json(
       {
@@ -127,6 +164,7 @@ app.post('/create-payment', async (c) => {
       201
     );
   } catch (error) {
+    console.error(error); 
     return c.json(
       {
         error: "Failed to create payment",
@@ -136,6 +174,7 @@ app.post('/create-payment', async (c) => {
     );
   }
 });
+
 
 
 
@@ -191,41 +230,6 @@ catch(e){
 
 app.delete('/delete-campaign/:id', async (c) => {
   const db = c.get('db');
-  const campaignId = Number(c.req.param('id')); 
-  try {
-    const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.id, campaignId)).limit(1);
-
-    if (existingCampaign.length === 0) {
-      return c.json({
-        error: "Unable to delete. Campaign does not exist.",
-        status: 404,
-      });
-    }
-
-    try {
-      await db.delete(campaigns).where(eq(campaigns.id, campaignId));
-      return c.json({
-        message: "Campaign deleted successfully",
-        status: 200,
-      });
-    } catch (deleteError) {
-      return c.json({
-        error: "Failed to delete the campaign from the database",
-        status: 502,
-      });
-    }
-  } catch (e) {
-    return c.json({
-      error: "Failed to process the request",
-      status: 400,
-    });
-  }
-});
-
-
-app.put('/update-campaign/:id', async (c) => {
-  const db = c.get('db');
-  const body = await c.req.parseBody();
   const campaignId = Number(c.req.param('id'));
 
   if (isNaN(campaignId)) {
@@ -236,37 +240,30 @@ app.put('/update-campaign/:id', async (c) => {
   }
 
   try {
-    const campaignData = {
-      campaignName: String(body.campaignname),
-      description: String(body.description),
-      targetAmount: Number(body.targetamount),
-      days: Number(body.days),
-    };
+    const existingCampaign = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
 
-    if (
-      !campaignData.campaignName || 
-      !campaignData.description || 
-      isNaN(campaignData.targetAmount) || 
-      isNaN(campaignData.days)
-    ) {
+    if (existingCampaign.length === 0) {
       return c.json({
-        error: "All fields are required and must be valid",
-        status: 400,
-      });
-    }
-
-    const result = await db.update(campaigns).set(campaignData).where(eq(campaigns.id, campaignId));
-
-    if (!result) {
-      return c.json({
-        error: "Campaign not found or no changes applied",
+        error: "Unable to delete. Campaign does not exist.",
         status: 404,
       });
     }
 
+    const result = await db.delete(campaigns).where(eq(campaigns.id, campaignId));
+
+    if (!result) {
+      return c.json({
+        error: "Failed to delete the campaign. No rows were affected.",
+        status: 400,
+      });
+    }
+
     return c.json({
-      message: "Campaign updated successfully",
-      data: result,
+      message: "Campaign deleted successfully",
       status: 200,
     });
   } catch (error) {
@@ -277,6 +274,79 @@ app.put('/update-campaign/:id', async (c) => {
     });
   }
 });
+
+
+
+app.put('/update-campaign/:id', async (c) => {
+  const db = c.get('db');
+  const body = await c.req.json();
+  const campaignId = Number(c.req.param('id'));
+
+  // Validate campaignId
+  if (isNaN(campaignId)) {
+    return c.json({
+      error: "Invalid campaign ID",
+      status: 400,
+    });
+  }
+
+  // Validate body fields
+  if (!body.campaignname || !body.description || isNaN(Number(body.targetamount)) || isNaN(Number(body.days))) {
+    return c.json({
+      error: "All fields are required and must be valid",
+      status: 400,
+    });
+  }
+
+  const campaignData = {
+    campaignName: String(body.campaignname),
+    description: String(body.description),
+    targetAmount: Number(body.targetamount),
+    days: Number(body.days),
+  };
+  console.log(campaignData)
+
+  try {
+    // Check if the campaign exists before updating
+    const existingCampaign = await db
+      .select()
+      .from(campaigns)
+      .where(eq(campaigns.id, campaignId))
+      .limit(1);
+
+    if (existingCampaign.length === 0) {
+      return c.json({
+        error: "Campaign not found",
+        status: 404,
+      });
+    }
+
+    // Update the campaign
+    const result = await db
+      .update(campaigns)
+      .set(campaignData)
+      .where(eq(campaigns.id, campaignId));
+
+    if (!result) {
+      return c.json({
+        error: "No changes applied to the campaign",
+        status: 400,
+      });
+    }
+
+    return c.json({
+      message: "Campaign updated successfully",
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    return c.json({
+      error: "Failed to process the request",
+      status: 500,
+    });
+  }
+});
+
 
 
 
@@ -436,7 +506,6 @@ app.get("/payment", async (c)=>{
 
 
 
-app.get('/hello', () => new Response('This is /hello'))
 
 });
 export default app
