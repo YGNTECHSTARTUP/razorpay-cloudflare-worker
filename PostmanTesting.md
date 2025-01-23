@@ -28,7 +28,7 @@ http://localhost:3000
 - **Response**:
   ```json
   {
-    "message": "Hello! There are 2 Routes /payment?userid and /user:id"
+    "message": "Hello! Enter the Valid Api Endpoint"
   }
   ```
 
