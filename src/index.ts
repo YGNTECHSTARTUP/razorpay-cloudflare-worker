@@ -226,7 +226,14 @@ app.delete('/delete-campaign/:id', async (c) => {
 app.put('/update-campaign/:id', async (c) => {
   const db = c.get('db');
   const body = await c.req.parseBody();
-  const campaignId = Number(c.req.param('id')); 
+  const campaignId = Number(c.req.param('id'));
+
+  if (isNaN(campaignId)) {
+    return c.json({
+      error: "Invalid campaign ID",
+      status: 400,
+    });
+  }
 
   try {
     const campaignData = {
@@ -234,47 +241,43 @@ app.put('/update-campaign/:id', async (c) => {
       description: String(body.description),
       targetAmount: Number(body.targetamount),
       days: Number(body.days),
-      imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
-      // img: body['file'] -- cloudflare r2 or alternative
     };
 
-    if (!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount || !campaignData.days || campaignData.imgurl) {
+    if (
+      !campaignData.campaignName || 
+      !campaignData.description || 
+      isNaN(campaignData.targetAmount) || 
+      isNaN(campaignData.days)
+    ) {
       return c.json({
-        error: "All fields are required",
+        error: "All fields are required and must be valid",
         status: 400,
       });
     }
 
-    const existingCampaign = await db.select().from(campaigns).where(eq(campaigns.id,campaignId)).limit(1);
+    const result = await db.update(campaigns).set(campaignData).where(eq(campaigns.id, campaignId));
 
-    if (existingCampaign.length === 0) {
+    if (!result) {
       return c.json({
-        error: "Campaign not found",
+        error: "Campaign not found or no changes applied",
         status: 404,
       });
     }
 
-    try {
-      const result = await db.update(campaigns).set(campaignData).where(eq(campaigns.id, campaignId));
-
-      return c.json({
-        message: "Campaign updated successfully",
-        data: result,
-        status: 200,
-      });
-    } catch (updateError) {
-      return c.json({
-        error: "Failed to update the campaign in the database",
-        status: 502,
-      });
-    }
-  } catch (e) {
     return c.json({
-      error: "Failed to parse the request body",
-      status: 400,
+      message: "Campaign updated successfully",
+      data: result,
+      status: 200,
+    });
+  } catch (error) {
+    console.error("Error:", error);
+    return c.json({
+      error: "Failed to process the request",
+      status: 500,
     });
   }
 });
+
 
 
 app.post('/create-campaign', async (c) => {
