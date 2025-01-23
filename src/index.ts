@@ -63,6 +63,78 @@ totalfunders : await db.select({count:count(campaigns.id)}).from(campaigns).wher
   })
 })
 
+app.post('/create-payment', async (c) => {
+  const db = c.get('db'); // Access the database connection
+  const body = await c.req.parseBody(); // Parse the request body
+
+  try {
+    // Extract and validate the required fields
+    const userid = Number(body.userid);
+    const amount = Number(body.amount);
+    const username = String(body.username || null); // Optional field
+    const campaignsid = body.campaignsid ? Number(body.campaignsid) : null; // Optional foreign key
+
+    if (!userid || !amount) {
+      return c.json(
+        {
+          error: "Missing required fields: 'userid' or 'amount'.",
+          status: 400,
+        },
+        400
+      );
+    }
+
+    // Validate foreign key constraint for `campaignsid`, if provided
+    if (campaignsid) {
+      const campaignExists = await db
+        .select()
+        .from(campaigns)
+        .where(eq(campaigns.id, campaignsid))
+        .limit(1);
+
+      if (campaignExists.length === 0) {
+        return c.json(
+          {
+            error: "Invalid 'campaignsid'. Campaign does not exist.",
+            status: 400,
+          },
+          400
+        );
+      }
+    }
+
+    const result = await db
+      .insert(paymentTable)
+      .values({
+        userid,
+        amount,
+        username,
+        campaignsid,
+      }) 
+
+    return c.json(
+      {
+        message: "Payment created successfully",
+        status: 201,
+      },
+      201
+    );
+  } catch (error) {
+    return c.json(
+      {
+        error: "Failed to create payment",
+        status: 500,
+      },
+      500
+    );
+  }
+});
+
+
+
+
+
+
 
 app.get("/showcampaigns", async (c) => {
   try{
@@ -102,7 +174,7 @@ app.get("/showcampaigns", async (c) => {
   }
 catch(e){
   return c.json({
-    message:"Failed to fetch the details",
+    error:"Failed to fetch the details",
     status:404
   })
 }
@@ -131,13 +203,13 @@ app.delete('/delete-campaign/:id', async (c) => {
       });
     } catch (deleteError) {
       return c.json({
-        message: "Failed to delete the campaign from the database",
+        error: "Failed to delete the campaign from the database",
         status: 502,
       });
     }
   } catch (e) {
     return c.json({
-      message: "Failed to process the request",
+      error: "Failed to process the request",
       status: 400,
     });
   }
@@ -185,13 +257,13 @@ app.put('/update-campaign/:id', async (c) => {
       });
     } catch (updateError) {
       return c.json({
-        message: "Failed to update the campaign in the database",
+        error: "Failed to update the campaign in the database",
         status: 502,
       });
     }
   } catch (e) {
     return c.json({
-      message: "Failed to parse the request body",
+      error: "Failed to parse the request body",
       status: 400,
     });
   }
@@ -233,14 +305,14 @@ app.post('/create-campaign', async (c) => {
     }
     catch{
       return c.json({
-        message:"Failed to Update in the Database",
+        error:"Failed to Update in the Database",
         status:502
       })
     }
   }
   catch(e){
     return c.json({
-      message:"Failed to parse the statement",
+      error:"Failed to parse the statement",
       status:400
     })
   }
