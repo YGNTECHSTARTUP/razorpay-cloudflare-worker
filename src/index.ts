@@ -6,6 +6,7 @@ import { neon, NeonQueryFunction } from '@neondatabase/serverless'
 import {  campaigns, paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
 import { count, sum } from 'drizzle-orm'
+import { bearerAuth } from 'hono/bearer-auth'
 declare module "hono"{
   interface ContextVariableMap{
     db:NeonHttpDatabase<Record<string, never>> & {
@@ -13,7 +14,10 @@ declare module "hono"{
   }
   }
 }
-const app = new Hono()
+
+const app = new Hono();
+const token = "";
+app.use("*",bearerAuth({token}))
 const fetchPayment = async () => {
   try {
     const response = await fetchApiResponse();
@@ -40,6 +44,9 @@ app.use('*', async (c, next) => {
   try {
 const { DATABSE_URL } = env<{
   DATABSE_URL: string;
+}>(c);
+const { AUTH_TOKEN } = env<{
+  AUTH_TOKEN: string;
 }>(c);
   const sql = neon(DATABSE_URL);
   c.set('db', drizzle(sql)); 
