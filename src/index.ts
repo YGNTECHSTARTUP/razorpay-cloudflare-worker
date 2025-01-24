@@ -7,6 +7,7 @@ import {  campaigns, paymentTable} from './db/schema'
 import { eq } from 'drizzle-orm/expressions'
 import { count, sum } from 'drizzle-orm'
 import { bearerAuth } from 'hono/bearer-auth'
+import { cors } from 'hono/cors'
 declare module "hono"{
   interface ContextVariableMap{
     db:NeonHttpDatabase<Record<string, never>> & {
@@ -16,8 +17,8 @@ declare module "hono"{
 }
 
 const app = new Hono();
+app.use("*", cors())
 const token = "";
-app.use("*",bearerAuth({token}))
 const fetchPayment = async () => {
   try {
     const response = await fetchApiResponse();
@@ -111,7 +112,7 @@ app.get("/campaign/:id", async (c) => {
 });
 
 
-app.post('/create-payment', async (c) => {
+app.post('/create-payment', bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
 
@@ -236,7 +237,7 @@ catch(e){
 
 );
 
-app.delete('/delete-campaign/:id', async (c) => {
+app.delete('/delete-campaign/:id',bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const campaignId = Number(c.req.param('id'));
 
@@ -285,7 +286,7 @@ app.delete('/delete-campaign/:id', async (c) => {
 
 
 
-app.put('/update-campaign/:id', async (c) => {
+app.put('/update-campaign/:id',bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
   const campaignId = Number(c.req.param('id'));
@@ -358,7 +359,7 @@ app.put('/update-campaign/:id', async (c) => {
 
 
 
-app.post('/create-campaign', async (c) => {
+app.post('/create-campaign',bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
   try{
