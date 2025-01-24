@@ -51,7 +51,8 @@ http://localhost:3000
       "campaignname": "Save the Forests",
       "description": "Protect the endangered forests",
       "targetamount": 10000,
-      "days": 30
+      "days": 30,
+      "imgurl":"https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg"
     }
     ```
 - **Responses**:
@@ -104,7 +105,8 @@ http://localhost:3000
       "campaignId": 1,
       "campaignName": "Save the Forests",
       "totalFunderCount": 5,
-      "totalRaisedAmount": 3000
+      "totalRaisedAmount": 3000,
+      "imgurl":"https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg",
     },
     ...
   ]
