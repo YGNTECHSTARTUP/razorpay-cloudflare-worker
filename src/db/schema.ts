@@ -18,7 +18,6 @@ export const campaigns = pgTable('campaigns', {
     targetAmount: integer('target_amount').notNull(),
     days: integer('days').notNull(),
     imgurl:varchar('image_url',{length:255}),
-    // paymentIds: integer("payment_ids").array().default([]) //denormalized apprach
   });
 
 

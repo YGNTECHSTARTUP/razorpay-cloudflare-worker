@@ -211,7 +211,8 @@ app.get("/showcampaigns", async (c) => {
           campaignId: campaign.id,
           campaignName: campaign.campaignName,
           totalFunderCount: funders,
-          totalRaisedAmount: raisedtotal
+          totalRaisedAmount: raisedtotal,
+          imgurl:campaign.imgurl
         };
       })
     );
@@ -359,7 +360,7 @@ app.post('/create-campaign', async (c) => {
       description: String(body.description),
       targetAmount: Number(body.targetamount),
       days: Number(body.days),
-      imgurl: "https://fadcdn.s3.ap-south-1.amazonaws.com/media/1345/Lead_image_71004.jpg", 
+      imgurl: String(body.imgurl), 
       // img:body['file'] -- cloudflare r2 is not ready yet or need to find any alternative
     };
     if(!campaignData.campaignName || !campaignData.description || !campaignData.targetAmount ||!campaignData.days){
