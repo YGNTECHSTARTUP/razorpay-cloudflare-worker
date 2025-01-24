@@ -175,7 +175,7 @@ http://localhost:3000
 ### **3. Payment Management**
 
 #### **POST `/create-payment`**
-- **Description**: Create a new payment for a user.
+- **Description**: Create a new payment for a user. **NOT WORKING YET**
 - **Request**:
   - **Method**: `POST`
   - **URL**: `http://localhost:3000/create-payment`
