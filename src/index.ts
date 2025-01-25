@@ -117,81 +117,109 @@ app.get("/campaign/:id", async (c) => {
 });
 
 
-app.post('/create-payment',cors({
-  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
-  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
-  credentials:false
-}),bearerAuth({ token }), async (c) => {
-  const db = c.get('db');
-  const body = await c.req.json();
+app.post(
+  '/create-payment',
+  cors({
+    origin: ["http://localhost:3000", "https://iskcon-hubli.vercel.app"],
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+    credentials: true,
+  }),
+  bearerAuth({ token }),
+  async (c) => {
+    const db = c.get('db');
+    let body;
 
-  try {
-    const userid = Number(body.userid);
-    const amount = Number(body.amount);
-    const username = body.username ? String(body.username) : null; // Optional field
-    const campaignsid = Number(body.campaignsid);
-
-    console.log("Received values:", { userid, amount, username, campaignsid });
-
-    // Validate userid and amount are numbers
-    if (isNaN(userid) || isNaN(amount)) {
+    try {
+      body = await c.req.json();
+    } catch (err) {
       return c.json(
         {
-          error: "Invalid values for 'userid' or 'amount'.",
+          error: "Invalid JSON body",
           status: 400,
         },
         400
       );
     }
 
-    // Validate campaignsid if provided
-    if (campaignsid) {
-      const campaignExists = await db
-        .select()
-        .from(campaigns)
-        .where(eq(campaigns.id, campaignsid))
-        .limit(1).execute();
-        console.log(campaignExists)
+    try {
+      const userid = Number(body.userid);
+      const amount = Number(body.amount);
+      const username = body.username ? String(body.username) : null; // Optional field
+      const campaignsid = body.campaignsid ? Number(body.campaignsid) : null;
 
-      if (!Array.isArray(campaignExists) || campaignExists.length === 0) {
+      console.log("Received values:", { userid, amount, username, campaignsid });
+
+      // Validate userid and amount
+      if (!userid || isNaN(userid) || userid <= 0) {
         return c.json(
           {
-            error: "Invalid 'campaignsid'. Campaign does not exist.",
+            error: "'userid' must be a valid positive number.",
             status: 400,
           },
           400
         );
       }
+
+      if (!amount || isNaN(amount) || amount <= 0) {
+        return c.json(
+          {
+            error: "'amount' must be a valid positive number.",
+            status: 400,
+          },
+          400
+        );
+      }
+
+      // Validate campaignsid if provided
+      if (campaignsid) {
+        const campaignExists = await db
+          .select()
+          .from(campaigns)
+          .where(eq(campaigns.id, campaignsid))
+          .limit(1);
+
+        console.log("Campaign exists query result:", campaignExists);
+
+        if (!Array.isArray(campaignExists) || campaignExists.length === 0) {
+          return c.json(
+            {
+              error: "Invalid 'campaignsid'. Campaign does not exist.",
+              status: 400,
+            },
+            400
+          );
+        }
+      }
+
+      const result = await db
+        .insert(paymentTable)
+        .values({
+          userid,
+          amount,
+          username,
+          campaignsid,
+        });
+console.log("result"+result)
+      return c.json(
+        {
+          message: "Payment created successfully",
+          status: 201,
+        },
+        201
+      );
+    } catch (error) {
+      console.error("Error creating payment:", error);
+      return c.json(
+        {
+          error: "Failed to create payment",
+          status: 500,
+        },
+        500
+      );
     }
-
-    const result = await db
-      .insert(paymentTable)
-      .values({
-        userid,
-        amount,
-        username,
-        campaignsid,
-      });
-
-    return c.json(
-      {
-        message: "Payment created successfully",
-        status: 201,
-      },
-      201
-    );
-  } catch (error) {
-    console.error(error); 
-    return c.json(
-      {
-        error: "Failed to create payment",
-        status: 500,
-      },
-      500
-    );
   }
-});
+);
 
 
 
@@ -230,7 +258,10 @@ app.get("/showcampaigns", async (c) => {
           campaignName: campaign.campaignName,
           totalFunderCount: funders,
           totalRaisedAmount: raisedtotal,
-          imgurl:campaign.imgurl
+          imgurl:campaign.imgurl,
+          campaignDesc:campaign.description,
+          daysleft:campaign.days,
+          targetamt:campaign.targetAmount
         };
       })
     );
@@ -251,7 +282,7 @@ app.delete('/delete-campaign/:id',cors({
   origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
-  credentials:false
+  credentials:true
 }),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const campaignId = Number(c.req.param('id'));
@@ -305,7 +336,7 @@ app.put('/update-campaign/:id',cors({
   origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
-  credentials:false
+  credentials:true
 }),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
@@ -383,7 +414,7 @@ app.post('/create-campaign',cors({
   origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
-  credentials:false
+  credentials:true
 }),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();

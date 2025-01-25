@@ -5,7 +5,7 @@ import { integer, pgTable, serial, text, varchar } from "drizzle-orm/pg-core";
 export const paymentTable = pgTable("userpayment",
     {
         id:integer().generatedAlwaysAsIdentity().primaryKey(),
-        userid:integer().notNull().unique(),
+        userid:integer().notNull(),
         amount:integer().notNull(),
         username:text("username"),
         campaignsid:integer("campaign_id").references(()=>campaigns.id)
