@@ -17,7 +17,11 @@ declare module "hono"{
 }
 
 const app = new Hono();
-app.use("*", cors())
+app.use("*", cors({
+  origin: '*', 
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+}))
 const token = "iskonhublicampaign";
 const fetchPayment = async () => {
   try {
