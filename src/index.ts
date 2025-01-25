@@ -17,14 +17,7 @@ declare module "hono"{
 }
 
 const app = new Hono();
-app.use("*", cors({
-  origin: ["https://iskcon-hubli.vercel.app","http://localhost:3000/"],
-  allowHeaders: ['X-Custom-Header', 'Upgrade-Insecure-Requests'],
-  allowMethods: ['POST', 'GET', 'OPTIONS','PUT','DELETE'],
-  exposeHeaders: ['Content-Length', 'X-Kuma-Revision'],
-  maxAge: 600,
-  credentials: true,
-}))
+app.use("*", cors())
 const token = "iskonhublicampaign";
 const fetchPayment = async () => {
   try {
