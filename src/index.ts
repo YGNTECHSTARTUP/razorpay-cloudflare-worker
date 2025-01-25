@@ -18,7 +18,7 @@ declare module "hono"{
 
 const app = new Hono();
 app.use("*", cors({
-  origin: '*', 
+  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
 }))
