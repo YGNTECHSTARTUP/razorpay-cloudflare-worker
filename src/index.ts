@@ -21,7 +21,7 @@ app.use("*", cors({
   origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
   allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
-  credentials:true
+  credentials:false
 }))
 const token = "iskonhublicampaign";
 const fetchPayment = async () => {
@@ -117,7 +117,12 @@ app.get("/campaign/:id", async (c) => {
 });
 
 
-app.post('/create-payment', bearerAuth({ token }), async (c) => {
+app.post('/create-payment',cors({
+  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+  credentials:false
+}),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
 
@@ -242,7 +247,12 @@ catch(e){
 
 );
 
-app.delete('/delete-campaign/:id',bearerAuth({ token }), async (c) => {
+app.delete('/delete-campaign/:id',cors({
+  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+  credentials:false
+}),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const campaignId = Number(c.req.param('id'));
 
@@ -291,7 +301,12 @@ app.delete('/delete-campaign/:id',bearerAuth({ token }), async (c) => {
 
 
 
-app.put('/update-campaign/:id',bearerAuth({ token }), async (c) => {
+app.put('/update-campaign/:id',cors({
+  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+  credentials:false
+}),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
   const campaignId = Number(c.req.param('id'));
@@ -364,7 +379,12 @@ app.put('/update-campaign/:id',bearerAuth({ token }), async (c) => {
 
 
 
-app.post('/create-campaign',bearerAuth({ token }), async (c) => {
+app.post('/create-campaign',cors({
+  origin: ["http://localhost:3000","https://iskcon-hubli.vercel.app"], 
+  allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowHeaders: ['Authorization', 'Content-Type', 'X-Requested-With'],
+  credentials:false
+}),bearerAuth({ token }), async (c) => {
   const db = c.get('db');
   const body = await c.req.json();
   try{
