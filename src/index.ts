@@ -101,9 +101,11 @@ app.get("/campaign/:id", async (c) => {
       .where(eq(paymentTable.campaignsid, campaignId));
 
     const raisedFund = raisedFundResult[0]?.sum || 0;
+    const Userlist = await db.select().from(paymentTable).where(eq(paymentTable.campaignsid,campaignId));
 
     return c.json({
       campaignDetails: campaignDetails[0], 
+      Userlist:Userlist,
       totalFunders,
       raisedFund,
     });
