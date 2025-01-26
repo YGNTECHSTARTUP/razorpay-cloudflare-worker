@@ -88,12 +88,14 @@ app.get("/campaign/:id", async (c) => {
       });
     }
 
-    const totalFundersResult = await db
-      .select({ count: count(campaigns.id) })
-      .from(campaigns)
-      .where(eq(campaigns.id, campaignId));
-
-    const totalFunders = totalFundersResult[0]?.count || 0;
+    const totalfunderscount = await db
+    .select({
+      count: count(paymentTable.id)
+    })
+    .from(paymentTable)
+    .where(eq(paymentTable.campaignsid,campaignId)); 
+  
+  const totalfunders = totalfunderscount[0].count;
 
     const raisedFundResult = await db
       .select({ sum: sum(paymentTable.amount) })
@@ -106,7 +108,7 @@ app.get("/campaign/:id", async (c) => {
     return c.json({
       campaignDetails: campaignDetails[0], 
       Userlist:Userlist,
-      totalFunders,
+      totalfunders,
       raisedFund,
     });
   } catch (error) {
